@@ -1,0 +1,17 @@
+# Environment variables
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+.venv/
+.env/
+
+# Vector database
+database/vector_store/
+
+# Chat history
+database/chats_data/
