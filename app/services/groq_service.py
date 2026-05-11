@@ -47,6 +47,20 @@ logger = logging.getLogger("J.A.R.V.I.S")
 
 
 # ============================================================================
+# CUSTOM EXCEPTIONS
+# ============================================================================
+
+
+class AllGroqApisFailedError(Exception):
+    """
+    Raised when all configured Groq API keys have been tried and all failed.
+    This indicates a service-level issue (e.g., all keys rate-limited or invalid).
+    """
+
+    pass
+
+
+# ============================================================================
 # HELPER: ESCAPE CURLY BRACES FOR LANGCHAIN
 # ============================================================================
 # LangChain prompt templates use {variable_name}. If learning data or chat
@@ -232,8 +246,8 @@ class GroqService:
 
         logger.error(f"All API keys failed. Tried keys: {masked_all_keys}")
 
-        raise Exception(
-            f"Error getting response from Groq: {str(last_exc)}"
+        raise AllGroqApisFailedError(
+            f"All {n} Groq API key(s) failed. Last error: {str(last_exc)}"
         ) from last_exc
 
     def get_response(
@@ -301,5 +315,8 @@ class GroqService:
             # Use next key in rotation; on failure, try remaining keys.
             return self._invoke_llm(prompt, messages, question)
 
+        except AllGroqApisFailedError:
+            # Re-raise AllGroqApisFailedError as-is so main.py can catch it specifically
+            raise
         except Exception as e:
             raise Exception(f"Error getting response from Groq: {str(e)}") from e

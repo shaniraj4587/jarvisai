@@ -66,6 +66,7 @@ class ChatRequest(BaseModel):
         default=None,
         description="Optional existing session ID",
     )
+    tts: bool = False
 
 
 # ============================================================================
@@ -105,3 +106,7 @@ class ChatHistory(BaseModel):
 
     session_id: str
     messages: List[ChatMessage]
+
+
+class TTSRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=5000)

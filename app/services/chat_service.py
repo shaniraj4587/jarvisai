@@ -219,6 +219,33 @@ class ChatService:
 
         return response
 
+    def process_message_stream(self, session_id: str, user_message: str):
+        """
+        Handle one general-chat message with streaming: add user message, call Groq,
+        and yield response chunks as they become available.
+
+        This method yields chunks of the response for streaming to the client.
+        After all chunks are yielded, the full response is added to the session.
+        """
+
+        self.add_message(session_id, "user", user_message)
+
+        chat_history = self.format_history_for_llm(session_id, exclude_last=True)
+
+        response = self.groq_service.get_response(
+            question=user_message, chat_history=chat_history
+        )
+
+        # Yield response in chunks (for now, simple character-based chunking)
+        # In a real implementation, you'd use LangChain's streaming callbacks
+        chunk_size = 10
+        for i in range(0, len(response), chunk_size):
+            chunk = response[i : i + chunk_size]
+            yield chunk
+
+        # After streaming all chunks, save the full response to the session
+        self.add_message(session_id, "assistant", response)
+
     def process_realtime_message(self, session_id: str, user_message: str) -> str:
         """
         Handle one realtime message: add user message, call realtime service (Tavily + Groq),
@@ -244,6 +271,39 @@ class ChatService:
         self.add_message(session_id, "assistant", response)
 
         return response
+
+    def process_realtime_message_stream(self, session_id: str, user_message: str):
+        """
+        Handle one realtime message with streaming: add user message, call realtime service,
+        and yield response chunks as they become available.
+
+        This method yields chunks of the response for streaming to the client.
+        After all chunks are yielded, the full response is added to the session.
+        Raises ValueError if realtime_service is None.
+        """
+
+        if not self.realtime_service:
+            raise ValueError(
+                "Realtime service is not initialized. Cannot process realtime queries."
+            )
+
+        self.add_message(session_id, "user", user_message)
+
+        chat_history = self.format_history_for_llm(session_id, exclude_last=True)
+
+        response = self.realtime_service.get_response(
+            question=user_message, chat_history=chat_history
+        )
+
+        # Yield response in chunks (for now, simple character-based chunking)
+        # In a real implementation, you'd use LangChain's streaming callbacks
+        chunk_size = 10
+        for i in range(0, len(response), chunk_size):
+            chunk = response[i : i + chunk_size]
+            yield chunk
+
+        # After streaming all chunks, save the full response to the session
+        self.add_message(session_id, "assistant", response)
 
     # ------------------------------------------------------------------------
     # PERSIST SESSION TO DISK
