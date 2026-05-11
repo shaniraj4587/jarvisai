@@ -1,7 +1,7 @@
 fastapi
 uvicorn[standard]
 langchain
-langchain-groq
+langchain-ollama
 langchain-community
 langchain-core
 sentence-transformers

@@ -34,29 +34,12 @@ from app.services.realtime_service import RealtimeGroqService
 from app.services.vector_store import VectorStoreService
 from config import VECTOR_STORE_DIR
 
-
 # ============================================================================
 # RATE LIMIT HANDLING
 # ============================================================================
 
-RATE_LIMIT_MESSAGE = (
-    "You've reached your daily API limit for this assistant. "
-    "Your credits will reset in a few hours, or you can upgrade your plan. "
-    "Please try again later."
-)
-
-
-def _is_rate_limit_error(exc: Exception) -> bool:
-    """
-    Detect whether an exception is a Groq rate-limit error.
-    """
-    msg = str(exc).lower()
-
-    return (
-        "429" in str(exc)
-        or "rate limit" in msg
-        or "tokens per day" in msg
-    )
+# Ollama is local, so no rate limit errors expected
+# But we keep the structure for compatibility
 
 
 # ============================================================================
@@ -86,6 +69,7 @@ chat_service: ChatService = None
 # ASCII BANNER
 # ============================================================================
 
+
 def print_title():
     """
     Print startup banner.
@@ -109,6 +93,7 @@ def print_title():
 # ============================================================================
 # APPLICATION LIFESPAN
 # ============================================================================
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -143,20 +128,20 @@ async def lifespan(app: FastAPI):
         logger.info("Vector store initialized successfully")
 
         # ------------------------------------------------------------------
-        # GENERAL GROQ SERVICE
+        # GENERAL OLLAMA SERVICE
         # ------------------------------------------------------------------
 
-        logger.info("Initializing Groq service (general chat)...")
+        logger.info("Initializing Ollama service (general chat)...")
 
         groq_service = GroqService(vector_store_service)
 
-        logger.info("Groq service initialized successfully")
+        logger.info("Ollama service initialized successfully")
 
         # ------------------------------------------------------------------
-        # REALTIME GROQ SERVICE
+        # REALTIME OLLAMA SERVICE
         # ------------------------------------------------------------------
 
-        logger.info("Initializing Realtime Groq service...")
+        logger.info("Initializing Realtime Ollama service...")
 
         realtime_service = RealtimeGroqService(vector_store_service)
 
@@ -182,8 +167,8 @@ async def lifespan(app: FastAPI):
         logger.info("=" * 60)
         logger.info("Service Status:")
         logger.info(" - Vector Store: Ready")
-        logger.info(" - Groq AI (General): Ready")
-        logger.info(" - Groq AI (Realtime): Ready")
+        logger.info(" - Ollama AI (General): Ready")
+        logger.info(" - Ollama AI (Realtime): Ready")
         logger.info(" - Chat Service: Ready")
         logger.info("=" * 60)
 
@@ -243,6 +228,7 @@ app.add_middleware(
 # ROOT ENDPOINT
 # ============================================================================
 
+
 @app.get("/")
 async def root():
     """
@@ -264,6 +250,7 @@ async def root():
 # HEALTH ENDPOINT
 # ============================================================================
 
+
 @app.get("/health")
 async def health():
     """
@@ -273,7 +260,7 @@ async def health():
     return {
         "status": "healthy",
         "vector_store": vector_store_service is not None,
-        "groq_service": groq_service is not None,
+        "ollama_service": groq_service is not None,
         "realtime_service": realtime_service is not None,
         "chat_service": chat_service is not None,
     }
@@ -282,6 +269,7 @@ async def health():
 # ============================================================================
 # GENERAL CHAT ENDPOINT
 # ============================================================================
+
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
@@ -297,9 +285,7 @@ async def chat(request: ChatRequest):
 
     try:
         # Create or load session
-        session_id = chat_service.get_or_create_session(
-            request.session_id
-        )
+        session_id = chat_service.get_or_create_session(request.session_id)
 
         # Process general chat
         response_text = chat_service.process_message(
@@ -324,14 +310,6 @@ async def chat(request: ChatRequest):
         )
 
     except Exception as e:
-        if _is_rate_limit_error(e):
-            logger.warning(f"Rate limit hit: {e}")
-
-            raise HTTPException(
-                status_code=429,
-                detail=RATE_LIMIT_MESSAGE,
-            )
-
         logger.error(
             f"Error processing chat: {e}",
             exc_info=True,
@@ -346,6 +324,7 @@ async def chat(request: ChatRequest):
 # ============================================================================
 # REALTIME CHAT ENDPOINT
 # ============================================================================
+
 
 @app.post("/chat/realtime", response_model=ChatResponse)
 async def chat_realtime(request: ChatRequest):
@@ -366,9 +345,7 @@ async def chat_realtime(request: ChatRequest):
         )
 
     try:
-        session_id = chat_service.get_or_create_session(
-            request.session_id
-        )
+        session_id = chat_service.get_or_create_session(request.session_id)
 
         response_text = chat_service.process_realtime_message(
             session_id,
@@ -391,14 +368,6 @@ async def chat_realtime(request: ChatRequest):
         )
 
     except Exception as e:
-        if _is_rate_limit_error(e):
-            logger.warning(f"Rate limit hit: {e}")
-
-            raise HTTPException(
-                status_code=429,
-                detail=RATE_LIMIT_MESSAGE,
-            )
-
         logger.error(
             f"Realtime chat error: {e}",
             exc_info=True,
@@ -413,6 +382,7 @@ async def chat_realtime(request: ChatRequest):
 # ============================================================================
 # CHAT HISTORY ENDPOINT
 # ============================================================================
+
 
 @app.get("/chat/history/{session_id}")
 async def get_chat_history(session_id: str):
@@ -455,6 +425,7 @@ async def get_chat_history(session_id: str):
 # ============================================================================
 # STANDALONE RUN
 # ============================================================================
+
 
 def run():
     """

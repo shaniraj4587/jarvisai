@@ -63,44 +63,14 @@ CHATS_DATA_DIR.mkdir(parents=True, exist_ok=True)
 VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
 
 # ============================================================================
-# GROQ API CONFIGURATION
+# OLLAMA CONFIGURATION
 # ============================================================================
-# Groq is the LLM provider we use for generating responses.
-# You can set one key (GROQ_API_KEY) or multiple keys; every key is used one-by-one:
-#   GROQ_API_KEY, GROQ_API_KEY_2, GROQ_API_KEY_3, ... (no upper limit).
-# Request 1 uses the 1st key, request 2 the 2nd, request 3 the 3rd, then back to 1st.
-# If a key fails (e.g. rate limit 429), the server tries the next key until one succeeds.
-# Model determines which AI model to use (llama-3.3-70b-versatile is latest).
+# Ollama is the local LLM provider we use for generating responses.
+# Make sure Ollama is running locally (typically on http://localhost:11434)
+# Model: gemma4:e4b (single model, no round-robin needed)
 
-
-def _load_groq_api_keys() -> list:
-    """
-    Load all GROQ API keys from the environment.
-    Reads GROQ_API_KEY first, then GROQ_API_KEY_2, GROQ_API_KEY_3, ... until
-    a number has no value. There is no upper limit on how many keys you can set.
-    Returns a list of non-empty key strings (may be empty if GROQ_API_KEY is not set).
-    """
-    keys = []
-    # First key: GROQ_API_KEY (required in practice; validated when building services).
-    first = os.getenv("GROQ_API_KEY", "").strip()
-    if first:
-        keys.append(first)
-    # Additional keys: GROQ_API_KEY_2, GROQ_API_KEY_3, GROQ_API_KEY_4, ...
-    i = 2
-    while True:
-        k = os.getenv(f"GROQ_API_KEY_{i}", "").strip()
-        if not k:
-            # No key for this number; stop (no more keys).
-            break
-        keys.append(k)
-        i += 1
-    return keys
-
-
-GROQ_API_KEYS = _load_groq_api_keys()
-# Backward compatibility: single key name still used in docs; code uses GROQ_API_KEYS.
-GROQ_API_KEY = GROQ_API_KEYS[0] if GROQ_API_KEYS else ""
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e4b")
 
 # ============================================================================
 # TAVILY API CONFIGURATION
